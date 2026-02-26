@@ -562,8 +562,7 @@ function updateTable() {
             if (r.hasTime) {
                 dateStr = formatDateISO(r.parsedDate, tz) + ' ' + tzAbbr;
             } else {
-                // Date-only: show just the date
-                dateStr = getDateKey(r.parsedDate, tz);
+                dateStr = formatDateOnly(r.parsedDate, tz);
             }
         } else {
             dateStr = r.timestampRaw || '—';

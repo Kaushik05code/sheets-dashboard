@@ -22,7 +22,33 @@ let cache = { data: null, timestamp: 0 };
 const CACHE_TTL = 30 * 1000; // 30 seconds
 
 function buildSheetUrl(tabName, startRow) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}&range=A${startRow}:E`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}&range=A${startRow}:E`;
+}
+
+function parseGvizValue(cell) {
+  if (!cell) return { value: '', hasTime: false };
+  // If it's a date type: cell.v = "Date(2026,1,26)" or "Date(2026,1,26,9,15,15)"
+  if (cell.v && typeof cell.v === 'string' && cell.v.startsWith('Date(')) {
+    const nums = cell.v.replace('Date(', '').replace(')', '').split(',').map(Number);
+    const year = nums[0];
+    const month = nums[1] + 1; // gviz months are 0-indexed
+    const day = nums[2];
+    const hour = nums[3] || 0;
+    const min = nums[4] || 0;
+    const sec = nums[5] || 0;
+    const hasTime = nums.length > 3;
+    const ts = `${month}/${day}/${year}${hasTime ? ` ${hour}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : ''}`;
+    return { value: ts, hasTime };
+  }
+  // Formatted value fallback
+  const f = (cell.f || cell.v || '').toString().trim();
+  const hasTime = /\d{1,2}\/\d{1,2}\/\d{4}\s+\d/.test(f);
+  return { value: f, hasTime };
+}
+
+function parseGvizText(cell) {
+  if (!cell) return '';
+  return (cell.f || cell.v || '').toString().trim();
 }
 
 async function fetchTabData(tab) {
@@ -30,25 +56,26 @@ async function fetchTabData(tab) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const csv = await res.text();
-    const records = parse(csv, {
-      relax_column_count: true,
-      skip_empty_lines: false,
-      relax_quotes: true,
-    });
+    let text = await res.text();
+    // Strip the JSONP wrapper: /*O_o*/google.visualization.Query.setResponse({...});
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart === -1) throw new Error('Invalid response');
+    const json = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+
+    const tableRows = json.table?.rows || [];
     const rows = [];
-    for (const r of records) {
-      const link      = (r[0] || '').trim();
-      const message   = (r[1] || '').trim();
-      const notes     = (r[2] || '').trim();
-      const industry  = (r[3] || '').trim();
-      const tsRaw     = (r[4] || '').trim();
 
-      // Skip rows without meaningful content (must have link or message)
+    for (const row of tableRows) {
+      const cells = row.c || [];
+      const link    = parseGvizText(cells[0]);
+      const message = parseGvizText(cells[1]);
+      const notes   = parseGvizText(cells[2]);
+      const industry = parseGvizText(cells[3]);
+      const tsInfo  = parseGvizValue(cells[4]);
+
+      // Skip rows without meaningful content
       if (!link && !message) continue;
-
-      // Detect if timestamp has time component
-      const hasTime = /\d{1,2}\/\d{1,2}\/\d{4}\s+\d/.test(tsRaw);
 
       rows.push({
         person:   tab.name,
@@ -56,8 +83,8 @@ async function fetchTabData(tab) {
         message,
         notes,
         industry: industry.toUpperCase(),
-        timestampRaw: tsRaw,
-        hasTime,
+        timestampRaw: tsInfo.value,
+        hasTime: tsInfo.hasTime,
       });
     }
     return rows;
