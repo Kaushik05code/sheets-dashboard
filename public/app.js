@@ -193,16 +193,16 @@ function updateTimeSeries() {
                     labels: { color: textColor, font: { family: 'Inter', size: 11 }, usePointStyle: true, pointStyleWidth: 8, padding: 16 }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(10,14,26,0.95)',
+                    backgroundColor: 'rgba(5,13,31,0.95)',
                     titleFont: { family: 'Inter', size: 12, weight: '600' },
                     bodyFont: { family: 'Inter', size: 11 },
-                    borderColor: 'rgba(99,102,241,0.15)', borderWidth: 1,
+                    borderColor: 'rgba(37,99,235,0.2)', borderWidth: 1,
                     padding: 10, cornerRadius: 8,
                 }
             },
             scales: {
-                x: { ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 }, grid: { color: gridColor } },
-                y: { stacked: true, beginAtZero: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }
+                x: { ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 }, grid: { color: 'rgba(37,99,235,0.04)' } },
+                y: { stacked: true, beginAtZero: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: 'rgba(37,99,235,0.04)' } }
             }
         }
     });
@@ -235,13 +235,13 @@ function updatePeopleChart() {
             indexAxis: 'y',
             plugins: { legend: { display: false },
                 tooltip: {
-                    backgroundColor: 'rgba(10,14,26,0.95)',
-                    borderColor: 'rgba(99,102,241,0.15)', borderWidth: 1,
+                    backgroundColor: 'rgba(5,13,31,0.95)',
+                    borderColor: 'rgba(37,99,235,0.2)', borderWidth: 1,
                     padding: 10, cornerRadius: 8,
                 }
             },
             scales: {
-                x: { beginAtZero: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                x: { beginAtZero: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: 'rgba(37,99,235,0.04)' } },
                 y: { ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim(), font: { size: 11, weight: '600' } }, grid: { display: false } }
             },
             onClick(e, elements) {
@@ -354,7 +354,7 @@ function updateHourChart() {
             labels,
             datasets: [{
                 data: hourCounts,
-                backgroundColor: hourCounts.map(v => `rgba(99,102,241,${0.15 + (v / max) * 0.75})`),
+                backgroundColor: hourCounts.map(v => `rgba(37,99,235,${0.15 + (v / max) * 0.75})`),
                 borderRadius: 3, borderSkipped: false,
             }]
         },
@@ -363,7 +363,7 @@ function updateHourChart() {
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: textColor, font: { size: 8 }, maxRotation: 0 }, grid: { display: false } },
-                y: { beginAtZero: true, ticks: { color: textColor, font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }
+                y: { beginAtZero: true, ticks: { color: textColor, font: { size: 9 } }, grid: { color: 'rgba(37,99,235,0.04)' } }
             }
         }
     });
