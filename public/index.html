@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Real-time message activity dashboard powered by Google Sheets. Track messages by person, industry, and time.">
-  <title>Message Activity Dashboard — Fourfront AI</title>
+  <meta name="description" content="Real-time outreach dashboard powered by Google Sheets. Track messages by person and time.">
+  <title>Outreach Dashboard — Fourfront AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"></script>
 </head>
@@ -13,296 +15,198 @@
   <!-- Loading Overlay -->
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner"></div>
-    <div class="loading-text">Loading dashboard data…</div>
+    <div class="loading-text">Loading dashboard…</div>
   </div>
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
-  <!-- Help Overlay -->
-  <div class="help-overlay" id="helpOverlay" onclick="toggleHelp()"></div>
-
-  <!-- Help Drawer -->
-  <div class="help-drawer" id="helpDrawer">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h3>📖 Dashboard Help</h3>
-      <button class="btn btn-sm" onclick="toggleHelp()">✕ Close</button>
-    </div>
-
-    <h4>1. Timestamp Parsing</h4>
-    <p>Timestamps are parsed in <strong>M/D/YYYY H:mm:ss</strong> format (e.g., <code>2/26/2026 9:15:15</code>). By default, timestamps are interpreted in <strong>Asia/Kolkata (IST)</strong> timezone. Use the timezone dropdown in the header to convert display to another timezone. Rows with missing or invalid timestamps are ignored from charts but shown in the table.</p>
-
-    <h4>2. Date Presets</h4>
-    <p>Use the quick presets in the filter panel: <strong>Today</strong>, <strong>This Week</strong>, <strong>This Month</strong>, <strong>This Year</strong>, or <strong>All Time</strong>. Select <strong>Custom</strong> to pick any date range using the date inputs.</p>
-
-    <h4>3. Exporting Data</h4>
-    <p>Click the <strong>Export CSV</strong> or <strong>Export XLSX</strong> button at the bottom of the page to download the currently filtered dataset. The export includes all visible columns.</p>
-
-    <h4>4. Data Source</h4>
-    <p>Data is fetched live from <a href="https://docs.google.com/spreadsheets/d/1e2LZH_zWNWOz4gVNXcA7bKzX_I2ZlB2YHAZ5qET0jkU/edit" target="_blank" style="color:var(--accent-1)">this Google Sheet</a>. The dashboard auto-refreshes every 30 seconds.</p>
-    <ul>
-      <li><strong>Anirudh</strong> — starting from row 1839</li>
-      <li><strong>Kaushik</strong> — starting from row 28</li>
-      <li><strong>Pranav</strong> — starting from row 4</li>
-      <li><strong>Varshith</strong> — starting from row 23</li>
-    </ul>
-
-    <h4>5. Embedding</h4>
-    <p>Use the following iframe to embed this dashboard:</p>
-    <code style="display:block;padding:8px;background:var(--bg-card);border-radius:6px;font-size:0.72rem;word-break:break-all;margin-top:4px;">&lt;iframe src="<span id="embedUrl"></span>" width="100%" height="800" frameborder="0"&gt;&lt;/iframe&gt;</code>
-
-    <h4>6. Sharing</h4>
-    <p>Click the <strong>Share</strong> button to copy a URL that preserves your current filters and date range. Anyone opening that link sees the same view.</p>
-  </div>
-
   <!-- Header -->
-  <header class="header" role="banner">
+  <header class="header">
     <div class="header-left">
-      <button class="btn btn-icon sidebar-toggle-mobile" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle filters">☰</button>
-      <span class="logo">fourFront.ai</span>
-      <div class="header-meta">
-        <span class="status-dot" aria-label="live"></span>
-        <span>Live</span>
-        <span>·</span>
-        <span id="lastUpdated">Loading…</span>
-      </div>
+      <span class="logo">fourFront<span class="logo-dot">.ai</span></span>
+      <div class="header-divider"></div>
+      <span class="header-title">Outreach Dashboard</span>
     </div>
     <div class="header-right">
-      <div class="tz-selector">
-        <label for="tzSelect">Timezone:</label>
-        <select id="tzSelect" class="select" style="width:160px" onchange="changeTimezone()" aria-label="Select timezone">
-          <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
-          <option value="UTC">UTC</option>
-          <option value="America/New_York">US Eastern</option>
-          <option value="America/Chicago">US Central</option>
-          <option value="America/Los_Angeles">US Pacific</option>
-          <option value="Europe/London">London (GMT)</option>
-          <option value="Europe/Berlin">Berlin (CET)</option>
-          <option value="Asia/Tokyo">Tokyo (JST)</option>
-          <option value="Australia/Sydney">Sydney (AEDT)</option>
-        </select>
+      <div class="live-badge">
+        <span class="live-dot"></span>
+        <span id="lastUpdated">Connecting…</span>
       </div>
-      <button class="btn" onclick="shareView()" aria-label="Share current view">🔗 Share</button>
-      <button class="btn" onclick="toggleHelp()" aria-label="Open help">❓ Help</button>
-      <div class="theme-toggle" onclick="toggleTheme()" tabindex="0" role="switch" aria-label="Toggle light/dark mode" onkeydown="if(event.key==='Enter')toggleTheme()">
+      <select id="tzSelect" class="header-select" onchange="changeTimezone()">
+        <option value="Asia/Kolkata">IST</option>
+        <option value="UTC">UTC</option>
+        <option value="America/New_York">EST</option>
+        <option value="America/Los_Angeles">PST</option>
+        <option value="Europe/London">GMT</option>
+        <option value="Asia/Tokyo">JST</option>
+      </select>
+      <button class="header-btn" onclick="shareView()" title="Share">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      </button>
+      <div class="theme-toggle" onclick="toggleTheme()" tabindex="0" role="switch" aria-label="Toggle theme">
         <div class="theme-toggle-knob"></div>
       </div>
     </div>
   </header>
 
-  <!-- Main Layout -->
-  <div class="layout">
+  <!-- Main Content -->
+  <main class="main">
 
-    <!-- LEFT: Filters Sidebar -->
-    <aside class="sidebar" id="sidebar" role="complementary" aria-label="Filters">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">🔍 Filters</span>
-          <button class="btn btn-sm" onclick="resetFilters()">Reset</button>
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-section">
+        <span class="filter-label">Team</span>
+        <div class="filter-chips" id="personChips"></div>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-section">
+        <span class="filter-label">Period</span>
+        <div class="preset-btns">
+          <button class="preset-btn active" data-preset="all" onclick="setPreset('all',this)">All</button>
+          <button class="preset-btn" data-preset="today" onclick="setPreset('today',this)">Today</button>
+          <button class="preset-btn" data-preset="week" onclick="setPreset('week',this)">Week</button>
+          <button class="preset-btn" data-preset="month" onclick="setPreset('month',this)">Month</button>
+          <button class="preset-btn" data-preset="custom" onclick="setPreset('custom',this)">Custom</button>
         </div>
-
-        <!-- Person Filter -->
-        <div class="filter-group">
-          <div class="filter-label">Person</div>
-          <div class="filter-chips" id="personChips"></div>
-        </div>
-
-        <!-- Industry Filter -->
-        <div class="filter-group" style="margin-top:14px">
-          <div class="filter-label">Industry</div>
-          <div class="filter-chips" id="industryChips" style="max-height:160px;overflow-y:auto"></div>
-        </div>
-
-        <!-- Search -->
-        <div class="filter-group" style="margin-top:14px">
-          <div class="filter-label">Search</div>
-          <div class="search-wrap">
-            <span class="search-icon">🔎</span>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search messages or notes…" oninput="onSearchInput()" aria-label="Search messages">
-          </div>
-        </div>
-
-        <!-- Date Range -->
-        <div class="filter-group" style="margin-top:14px">
-          <div class="filter-label">Date Range</div>
-          <div class="preset-btns" id="presetBtns">
-            <button class="preset-btn active" data-preset="all" onclick="setPreset('all',this)">All Time</button>
-            <button class="preset-btn" data-preset="today" onclick="setPreset('today',this)">Today</button>
-            <button class="preset-btn" data-preset="week" onclick="setPreset('week',this)">This Week</button>
-            <button class="preset-btn" data-preset="month" onclick="setPreset('month',this)">This Month</button>
-            <button class="preset-btn" data-preset="year" onclick="setPreset('year',this)">This Year</button>
-            <button class="preset-btn" data-preset="custom" onclick="setPreset('custom',this)">Custom</button>
-          </div>
-          <div class="date-inputs" style="margin-top:8px">
-            <input type="date" class="date-input" id="dateStart" onchange="onDateChange()" aria-label="Start date">
-            <input type="date" class="date-input" id="dateEnd" onchange="onDateChange()" aria-label="End date">
-          </div>
-        </div>
-
-        <!-- Granularity -->
-        <div class="filter-group" style="margin-top:14px">
-          <div class="filter-label">Granularity</div>
-          <div class="granularity-btns" id="granularityBtns">
-            <button class="gran-btn" data-gran="hour" onclick="setGranularity('hour',this)">Hour</button>
-            <button class="gran-btn active" data-gran="day" onclick="setGranularity('day',this)">Day</button>
-            <button class="gran-btn" data-gran="week" onclick="setGranularity('week',this)">Week</button>
-            <button class="gran-btn" data-gran="month" onclick="setGranularity('month',this)">Month</button>
-          </div>
-        </div>
-
-        <!-- Toggles -->
-        <div class="filter-group" style="margin-top:14px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;cursor:pointer;color:var(--text-secondary)">
-            <input type="checkbox" id="hideDuplicates" onchange="applyFilters()"> Hide duplicates
-          </label>
+        <input type="date" class="date-input" id="dateStart" onchange="onDateChange()" style="display:none">
+        <input type="date" class="date-input" id="dateEnd" onchange="onDateChange()" style="display:none">
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-section">
+        <div class="search-wrap">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search messages…" oninput="onSearchInput()">
         </div>
       </div>
-    </aside>
+      <button class="reset-btn" onclick="resetFilters()" title="Reset all filters">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 105.34-12.93L1 10"/></svg>
+      </button>
+    </div>
 
-    <!-- CENTER: Main Content -->
-    <main class="center-column" role="main">
-
-      <!-- KPI Cards -->
-      <div class="kpi-grid" id="kpiGrid">
-        <div class="kpi-card fade-in">
-          <div class="kpi-label">Total Messages</div>
+    <!-- KPI Cards -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon">📨</div>
+        <div class="kpi-content">
           <div class="kpi-value" id="kpiTotal">—</div>
+          <div class="kpi-label">Total Messages</div>
           <div class="kpi-sub" id="kpiTotalSub"></div>
         </div>
-        <div class="kpi-card fade-in">
-          <div class="kpi-label" id="kpiPersonLabel">Selected Person</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">👤</div>
+        <div class="kpi-content">
           <div class="kpi-value" id="kpiPerson">—</div>
+          <div class="kpi-label" id="kpiPersonLabel">All People</div>
           <div class="kpi-sub" id="kpiPersonSub"></div>
         </div>
-        <div class="kpi-card fade-in">
-          <div class="kpi-label">Messages Today</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">📅</div>
+        <div class="kpi-content">
           <div class="kpi-value" id="kpiToday">—</div>
+          <div class="kpi-label">Today</div>
           <div class="kpi-sub" id="kpiTodaySub"></div>
         </div>
-        <div class="kpi-card fade-in">
-          <div class="kpi-label">Avg / Day</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">⚡</div>
+        <div class="kpi-content">
           <div class="kpi-value" id="kpiAvg">—</div>
-          <div class="kpi-sub" id="kpiAvgSub">in selected range</div>
+          <div class="kpi-label">Avg / Day</div>
+          <div class="kpi-sub" id="kpiAvgSub"></div>
         </div>
       </div>
+    </div>
 
-      <!-- Time Series Chart -->
-      <div class="card fade-in">
+    <!-- Charts Row -->
+    <div class="charts-row">
+      <!-- Time Series -->
+      <div class="card card-wide">
         <div class="card-header">
-          <span class="card-title">📈 Messages Over Time</span>
-          <div class="chart-controls">
-            <div class="granularity-btns" id="chartGranBtns">
-              <button class="gran-btn" data-gran="hour" onclick="setGranularity('hour',this)">H</button>
-              <button class="gran-btn active" data-gran="day" onclick="setGranularity('day',this)">D</button>
-              <button class="gran-btn" data-gran="week" onclick="setGranularity('week',this)">W</button>
-              <button class="gran-btn" data-gran="month" onclick="setGranularity('month',this)">M</button>
-            </div>
+          <span class="card-title">Messages Over Time</span>
+          <div class="gran-toggle">
+            <button class="gran-btn" data-gran="hour" onclick="setGranularity('hour',this)">H</button>
+            <button class="gran-btn active" data-gran="day" onclick="setGranularity('day',this)">D</button>
+            <button class="gran-btn" data-gran="week" onclick="setGranularity('week',this)">W</button>
+            <button class="gran-btn" data-gran="month" onclick="setGranularity('month',this)">M</button>
           </div>
         </div>
-        <div class="chart-container" style="height:320px">
-          <canvas id="timeSeriesChart" role="img" aria-label="Time series chart showing messages over time"></canvas>
+        <div class="chart-container" style="height:280px">
+          <canvas id="timeSeriesChart"></canvas>
         </div>
       </div>
-
-      <!-- Calendar Heatmap -->
-      <div class="card fade-in">
+      <!-- People -->
+      <div class="card card-narrow">
         <div class="card-header">
-          <span class="card-title">🗓️ Activity Heatmap</span>
+          <span class="card-title">Team Breakdown</span>
         </div>
-        <div id="heatmapContainer" style="overflow-x:auto"></div>
+        <div class="chart-container" style="height:280px">
+          <canvas id="peopleChart"></canvas>
+        </div>
       </div>
+    </div>
 
+    <!-- Second Charts Row -->
+    <div class="charts-row">
+      <!-- Heatmap -->
+      <div class="card card-wide">
+        <div class="card-header">
+          <span class="card-title">Activity Heatmap</span>
+        </div>
+        <div id="heatmapContainer" style="overflow-x:auto;padding:12px 0"></div>
+      </div>
       <!-- Hour Distribution -->
-      <div class="card fade-in">
+      <div class="card card-narrow">
         <div class="card-header">
-          <span class="card-title">🕐 Most Active Hours</span>
+          <span class="card-title">Active Hours</span>
         </div>
         <div class="chart-container" style="height:200px">
-          <canvas id="hourChart" role="img" aria-label="Hour of day distribution chart"></canvas>
+          <canvas id="hourChart"></canvas>
         </div>
       </div>
+    </div>
 
-    </main>
-
-    <!-- RIGHT: Breakdowns -->
-    <aside class="right-column">
-
-      <!-- People Breakdown -->
-      <div class="card fade-in">
-        <div class="card-header">
-          <span class="card-title">👥 By Person</span>
-        </div>
-        <div class="chart-container" style="height:220px">
-          <canvas id="peopleChart" role="img" aria-label="Messages by person bar chart"></canvas>
-        </div>
-      </div>
-
-      <!-- Industry Breakdown -->
-      <div class="card fade-in">
-        <div class="card-header">
-          <span class="card-title">🏢 By Industry</span>
-        </div>
-        <div class="chart-container" style="height:260px">
-          <canvas id="industryChart" role="img" aria-label="Messages by industry donut chart"></canvas>
+    <!-- Table -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Recent Messages</span>
+        <div class="table-actions">
+          <span class="table-count" id="tableInfo"></span>
+          <button class="export-btn" onclick="exportData('csv')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
+          <button class="export-btn" onclick="exportData('xlsx')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            XLSX
+          </button>
         </div>
       </div>
-
-      <!-- Top Links -->
-      <div class="card fade-in">
-        <div class="card-header">
-          <span class="card-title">🔗 Top Links</span>
-        </div>
-        <div id="topLinksContainer" style="max-height:300px;overflow-y:auto"></div>
+      <div class="table-wrap">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr>
+              <th onclick="sortTable('timestamp')">Timestamp ↕</th>
+              <th onclick="sortTable('person')">Person ↕</th>
+              <th>Link</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
       </div>
-
-      <!-- Per Person Per Day -->
-      <div class="card fade-in">
-        <div class="card-header">
-          <span class="card-title">📊 Per Person / Day</span>
-        </div>
-        <div id="perPersonDayContainer" style="max-height:200px;overflow-y:auto"></div>
+      <div class="table-footer">
+        <button class="page-btn" id="prevPage" onclick="changePage(-1)">← Prev</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button class="page-btn" id="nextPage" onclick="changePage(1)">Next →</button>
       </div>
+    </div>
 
-    </aside>
-
-    <!-- BOTTOM: Table -->
-    <section class="bottom-section">
-      <div class="card fade-in">
-        <div class="card-header">
-          <span class="card-title">📋 Recent Messages</span>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span class="page-info" id="tableInfo"></span>
-            <button class="btn btn-sm" onclick="exportData('csv')">📥 Export CSV</button>
-            <button class="btn btn-sm" onclick="exportData('xlsx')">📥 Export XLSX</button>
-          </div>
-        </div>
-        <div class="table-wrap" style="max-height:500px;overflow-y:auto">
-          <table class="data-table" id="dataTable">
-            <thead>
-              <tr>
-                <th onclick="sortTable('timestamp')" data-col="timestamp">Timestamp ↕</th>
-                <th onclick="sortTable('person')" data-col="person">Person ↕</th>
-                <th>Link</th>
-                <th>Message</th>
-                <th>Notes</th>
-                <th onclick="sortTable('industry')" data-col="industry">Industry ↕</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-        </div>
-        <div class="table-footer">
-          <div class="pagination">
-            <button class="btn btn-sm" id="prevPage" onclick="changePage(-1)">← Prev</button>
-            <span class="page-info" id="pageInfo"></span>
-            <button class="btn btn-sm" id="nextPage" onclick="changePage(1)">Next →</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-  </div>
+  </main>
 
   <script src="/utils.js"></script>
   <script src="/app.js"></script>
