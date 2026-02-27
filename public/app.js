@@ -165,44 +165,83 @@ function updateTimeSeries() {
     Object.values(buckets).forEach(b => Object.keys(b).forEach(k => allKeys.add(k)));
     const labels = [...allKeys].sort();
 
+    // Format labels for readability
+    const displayLabels = labels.map(k => {
+        if (currentGranularity === 'hour') {
+            // "2026-02-26 10:00" -> "10:00"
+            return k.split(' ').pop();
+        }
+        if (currentGranularity === 'day') {
+            // "2026-02-26" -> "Feb 26"
+            const d = new Date(k + 'T00:00:00');
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+        if (currentGranularity === 'week') {
+            return 'W' + k.split('-W')[1];
+        }
+        if (currentGranularity === 'month') {
+            const [y, m] = k.split('-');
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return months[parseInt(m) - 1] + " '" + y.slice(2);
+        }
+        return k;
+    });
+
     const datasets = PERSONS.map(p => ({
         label: p,
         data: labels.map(k => buckets[p]?.[k] || 0),
+        backgroundColor: PERSON_COLORS[p].border + 'cc',
         borderColor: PERSON_COLORS[p].border,
-        backgroundColor: PERSON_COLORS[p].bg,
-        fill: true, tension: 0.4,
-        pointRadius: labels.length > 30 ? 0 : 4,
-        pointHoverRadius: 6,
-        borderWidth: 2,
+        borderWidth: 1,
+        borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 4, bottomRight: 4 },
+        borderSkipped: false,
+        barPercentage: labels.length <= 5 ? 0.4 : 0.7,
+        categoryPercentage: labels.length <= 5 ? 0.5 : 0.8,
     }));
 
     const ctx = document.getElementById('timeSeriesChart');
     if (timeSeriesChart) timeSeriesChart.destroy();
 
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-    const gridColor = 'rgba(255,255,255,0.03)';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
 
     timeSeriesChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
+        type: 'bar',
+        data: { labels: displayLabels, datasets },
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
-                    labels: { color: textColor, font: { family: 'Inter', size: 11 }, usePointStyle: true, pointStyleWidth: 8, padding: 16 }
+                    labels: {
+                        color: textColor,
+                        font: { family: 'Inter', size: 11, weight: '500' },
+                        usePointStyle: true, pointStyleWidth: 8, padding: 16,
+                        boxWidth: 12, boxHeight: 12,
+                    }
                 },
                 tooltip: {
                     backgroundColor: 'rgba(5,13,31,0.95)',
                     titleFont: { family: 'Inter', size: 12, weight: '600' },
                     bodyFont: { family: 'Inter', size: 11 },
                     borderColor: 'rgba(37,99,235,0.2)', borderWidth: 1,
-                    padding: 10, cornerRadius: 8,
+                    padding: 12, cornerRadius: 8,
+                    callbacks: {
+                        title: (items) => labels[items[0].dataIndex] || items[0].label,
+                    }
                 }
             },
             scales: {
-                x: { ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 }, grid: { color: 'rgba(37,99,235,0.04)' } },
-                y: { stacked: true, beginAtZero: true, ticks: { color: textColor, font: { size: 10 } }, grid: { color: 'rgba(37,99,235,0.04)' } }
+                x: {
+                    stacked: true,
+                    ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
+                    grid: { color: 'rgba(37,99,235,0.04)' },
+                },
+                y: {
+                    stacked: true, beginAtZero: true,
+                    ticks: { color: textColor, font: { size: 10 }, stepSize: 1, precision: 0 },
+                    grid: { color: 'rgba(37,99,235,0.04)' },
+                    title: { display: true, text: 'Messages', color: textColor, font: { family: 'Inter', size: 10 } },
+                }
             }
         }
     });
