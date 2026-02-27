@@ -152,8 +152,19 @@
       <div class="card card-wide">
         <div class="card-header">
           <span class="card-title">Activity Heatmap</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="gran-toggle">
+              <button class="gran-btn active" data-hm="day" onclick="setHeatmapView('day',this)">Day</button>
+              <button class="gran-btn" data-hm="week" onclick="setHeatmapView('week',this)">Week</button>
+              <button class="gran-btn" data-hm="month" onclick="setHeatmapView('month',this)">Month</button>
+            </div>
+            <div class="filter-divider" style="height:20px"></div>
+            <input type="date" class="date-input" id="hmDateStart" onchange="updateHeatmap()">
+            <span style="color:var(--text-muted);font-size:0.72rem">–</span>
+            <input type="date" class="date-input" id="hmDateEnd" onchange="updateHeatmap()">
+          </div>
         </div>
-        <div id="heatmapContainer" style="overflow-x:auto;padding:12px 0"></div>
+        <div id="heatmapContainer" style="overflow-x:auto;padding:14px 16px"></div>
       </div>
       <!-- Hour Distribution -->
       <div class="card card-narrow">

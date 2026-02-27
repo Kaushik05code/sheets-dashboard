@@ -14,6 +14,7 @@ let sortDir = -1;
 let currentPage = 1;
 const PAGE_SIZE = 50;
 let refreshInterval = null;
+let heatmapView = 'day';
 
 // Charts
 let timeSeriesChart = null;
@@ -254,24 +255,39 @@ function updatePeopleChart() {
 }
 
 // ─── Calendar Heatmap ─────────────────────────────────
+function setHeatmapView(view, el) {
+    heatmapView = view;
+    document.querySelectorAll('[data-hm]').forEach(b => b.classList.remove('active'));
+    if (el) el.classList.add('active');
+    updateHeatmap();
+}
+
 function updateHeatmap() {
     const container = document.getElementById('heatmapContainer');
-    const withDates = filteredData.filter(r => r.parsedDate);
+    const allWithDates = rawData.filter(r => r.parsedDate);
 
-    if (withDates.length === 0) {
+    // Use heatmap-specific date range from its own inputs
+    const hmStart = document.getElementById('hmDateStart')?.value || null;
+    const hmEnd = document.getElementById('hmDateEnd')?.value || null;
+
+    const withDates = allWithDates.filter(r => {
+        const dk = getDateKey(r.parsedDate, currentTimezone);
+        if (hmStart && dk < hmStart) return false;
+        if (hmEnd && dk > hmEnd) return false;
+        return true;
+    });
+
+    if (allWithDates.length === 0) {
         container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div>No date data</div>';
         return;
     }
 
+    // Count messages by day
     const dayCounts = {};
     withDates.forEach(r => {
         const dk = getDateKey(r.parsedDate, currentTimezone);
         dayCounts[dk] = (dayCounts[dk] || 0) + 1;
     });
-
-    const endDate = new Date();
-    const startDate = new Date(endDate);
-    startDate.setMonth(startDate.getMonth() - 3);
 
     const maxCount = Math.max(...Object.values(dayCounts), 1);
     const getLevel = (count) => {
@@ -284,17 +300,47 @@ function updateHeatmap() {
         return 5;
     };
 
-    const weeks = [];
-    let current = new Date(startDate);
-    current.setDate(current.getDate() - current.getDay());
+    let html = '<div style="position:relative">';
 
-    while (current <= endDate) {
+    if (heatmapView === 'day') {
+        html += renderDayHeatmap(dayCounts, getLevel, hmStart, hmEnd);
+    } else if (heatmapView === 'week') {
+        html += renderWeekHeatmap(dayCounts, hmStart, hmEnd);
+    } else {
+        html += renderMonthHeatmap(dayCounts, hmStart, hmEnd);
+    }
+
+    // Legend
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">';
+    html += '<div style="font-size:0.7rem;color:var(--text-muted)">' + withDates.length + ' messages in range</div>';
+    html += '<div style="display:flex;align-items:center;gap:4px;font-size:0.6rem;color:var(--text-muted)">';
+    html += '<span>Less</span>';
+    for (let l = 0; l <= 5; l++) html += `<div class="heatmap-cell" data-level="${l}" style="width:14px;height:14px;border-radius:3px"></div>`;
+    html += '<span>More</span></div></div>';
+
+    // Tooltip
+    html += '<div id="hmTooltip" style="position:fixed;display:none;background:rgba(5,13,31,0.95);color:#f1f5f9;border:1px solid rgba(37,99,235,0.2);border-radius:8px;padding:8px 12px;font-size:0.75rem;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4);white-space:nowrap"></div>';
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ─── Day View (GitHub-style grid) ────────────────────
+function renderDayHeatmap(dayCounts, getLevel, hmStart, hmEnd) {
+    const endDate = hmEnd ? new Date(hmEnd + 'T23:59:59') : new Date();
+    const startDate = hmStart ? new Date(hmStart + 'T00:00:00') : new Date(new Date().setMonth(endDate.getMonth() - 3));
+
+    const weeks = [];
+    let cur = new Date(startDate);
+    cur.setDate(cur.getDate() - cur.getDay());
+
+    while (cur <= endDate) {
         const week = [];
         for (let d = 0; d < 7; d++) {
-            const dk = current.toISOString().slice(0, 10);
-            const isFuture = current > endDate;
-            week.push({ date: dk, count: dayCounts[dk] || 0, level: isFuture ? -1 : getLevel(dayCounts[dk]) });
-            current.setDate(current.getDate() + 1);
+            const dk = cur.toISOString().slice(0, 10);
+            const isFuture = cur > endDate;
+            const isBefore = cur < startDate;
+            week.push({ date: dk, count: dayCounts[dk] || 0, level: (isFuture || isBefore) ? -1 : getLevel(dayCounts[dk]) });
+            cur.setDate(cur.getDate() + 1);
         }
         weeks.push(week);
     }
@@ -302,17 +348,15 @@ function updateHeatmap() {
     const numWeeks = weeks.length;
     const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    let html = `<div class="heatmap-grid" style="position:relative">`;
-
-    // Month labels row
-    html += `<div class="hm-months" style="display:grid;grid-template-columns:28px repeat(${numWeeks},1fr);gap:2px;margin-bottom:4px">`;
+    let html = '';
+    // Month headers
+    html += `<div style="display:grid;grid-template-columns:32px repeat(${numWeeks},1fr);gap:2px;margin-bottom:4px">`;
     html += '<div></div>';
     let lastMonth = '';
-    weeks.forEach((w, i) => {
-        const m = w[3]?.date?.slice(0, 7) || w[0].date.slice(0, 7);
+    weeks.forEach(w => {
+        const m = (w[3] || w[0]).date.slice(0, 7);
         if (m !== lastMonth) {
-            const label = new Date(m + '-15T00:00:00Z').toLocaleString('en', { month: 'short' });
-            html += `<div style="font-size:0.65rem;color:var(--text-muted);font-weight:500">${label}</div>`;
+            html += `<div style="font-size:0.65rem;color:var(--text-secondary);font-weight:500">${new Date(m + '-15T00:00:00Z').toLocaleString('en', { month: 'short' })}</div>`;
             lastMonth = m;
         } else {
             html += '<div></div>';
@@ -320,43 +364,104 @@ function updateHeatmap() {
     });
     html += '</div>';
 
-    // Day rows
+    // Grid
     for (let d = 0; d < 7; d++) {
-        html += `<div style="display:grid;grid-template-columns:28px repeat(${numWeeks},1fr);gap:2px;align-items:center">`;
-        html += `<div style="font-size:0.6rem;color:var(--text-muted);text-align:right;padding-right:4px">${d % 2 === 1 ? dayLabels[d] : ''}</div>`;
+        html += `<div style="display:grid;grid-template-columns:32px repeat(${numWeeks},1fr);gap:2px;align-items:center">`;
+        html += `<div style="font-size:0.6rem;color:var(--text-muted);text-align:right;padding-right:6px">${d % 2 === 1 ? dayLabels[d] : ''}</div>`;
         weeks.forEach(w => {
             const cell = w[d];
             if (cell.level === -1) {
-                html += '<div style="aspect-ratio:1;border-radius:2px"></div>';
+                html += '<div style="aspect-ratio:1;border-radius:3px"></div>';
             } else {
-                const dateLabel = new Date(cell.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const lbl = new Date(cell.date + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
                 html += `<div class="heatmap-cell" data-level="${cell.level}" 
-                    onmouseenter="showHmTip(event,'${dateLabel}',${cell.count})" 
+                    onmouseenter="showHmTip(event,'${lbl}',${cell.count})" 
                     onmouseleave="hideHmTip()" 
                     style="aspect-ratio:1;border-radius:3px;cursor:pointer"></div>`;
             }
         });
         html += '</div>';
     }
-
-    // Legend
-    html += '<div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-left:32px;font-size:0.6rem;color:var(--text-muted)">';
-    html += '<span>Less</span>';
-    for (let l = 0; l <= 5; l++) html += `<div class="heatmap-cell" data-level="${l}" style="width:14px;height:14px;border-radius:3px"></div>`;
-    html += '<span>More</span>';
-    html += '</div>';
-
-    // Tooltip element
-    html += '<div id="hmTooltip" style="position:fixed;display:none;background:rgba(5,13,31,0.95);color:#f1f5f9;border:1px solid rgba(37,99,235,0.2);border-radius:8px;padding:8px 12px;font-size:0.75rem;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4);white-space:nowrap"></div>';
-
-    html += '</div>';
-    container.innerHTML = html;
+    return html;
 }
 
-function showHmTip(e, date, count) {
+// ─── Week View (bar-style rows) ──────────────────────
+function renderWeekHeatmap(dayCounts, hmStart, hmEnd) {
+    const endDate = hmEnd ? new Date(hmEnd + 'T23:59:59') : new Date();
+    const startDate = hmStart ? new Date(hmStart + 'T00:00:00') : new Date(new Date().setMonth(endDate.getMonth() - 3));
+
+    // Group by week
+    const weekData = {};
+    Object.entries(dayCounts).forEach(([dk, count]) => {
+        if (hmStart && dk < hmStart) return;
+        if (hmEnd && dk > hmEnd) return;
+        const wk = getWeekKey(new Date(dk + 'T00:00:00Z'), 'UTC');
+        weekData[wk] = (weekData[wk] || 0) + count;
+    });
+
+    const entries = Object.entries(weekData).sort((a, b) => a[0].localeCompare(b[0]));
+    if (entries.length === 0) return '<div class="empty-state">No data in range</div>';
+
+    const maxVal = Math.max(...entries.map(e => e[1]), 1);
+
+    let html = '<div style="display:flex;flex-direction:column;gap:4px">';
+    entries.forEach(([wk, count]) => {
+        const endOfWeek = new Date(wk + 'T00:00:00Z');
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
+        const label = new Date(wk + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+            ' – ' + endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const pct = Math.max(8, (count / maxVal) * 100);
+        html += `<div style="display:grid;grid-template-columns:140px 1fr 40px;align-items:center;gap:8px"
+            onmouseenter="showHmTip(event,'Week of ${label}',${count})" onmouseleave="hideHmTip()">
+            <div style="font-size:0.7rem;color:var(--text-secondary);text-align:right">${label}</div>
+            <div style="height:18px;border-radius:4px;overflow:hidden;background:rgba(37,99,235,0.06)">
+                <div style="width:${pct}%;height:100%;border-radius:4px;background:linear-gradient(90deg,rgba(37,99,235,0.5),rgba(37,99,235,0.8));transition:width 0.3s"></div>
+            </div>
+            <div style="font-size:0.72rem;font-weight:600;color:var(--text-primary)">${count}</div>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+// ─── Month View (bar-style rows) ─────────────────────
+function renderMonthHeatmap(dayCounts, hmStart, hmEnd) {
+    const monthData = {};
+    Object.entries(dayCounts).forEach(([dk, count]) => {
+        if (hmStart && dk < hmStart) return;
+        if (hmEnd && dk > hmEnd) return;
+        const mk = dk.slice(0, 7);
+        monthData[mk] = (monthData[mk] || 0) + count;
+    });
+
+    const entries = Object.entries(monthData).sort((a, b) => a[0].localeCompare(b[0]));
+    if (entries.length === 0) return '<div class="empty-state">No data in range</div>';
+
+    const maxVal = Math.max(...entries.map(e => e[1]), 1);
+
+    let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+    entries.forEach(([mk, count]) => {
+        const [y, m] = mk.split('-');
+        const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const label = months[parseInt(m) - 1] + ' ' + y;
+        const pct = Math.max(8, (count / maxVal) * 100);
+        html += `<div style="display:grid;grid-template-columns:120px 1fr 40px;align-items:center;gap:8px"
+            onmouseenter="showHmTip(event,'${label}',${count})" onmouseleave="hideHmTip()">
+            <div style="font-size:0.75rem;font-weight:500;color:var(--text-secondary);text-align:right">${label}</div>
+            <div style="height:22px;border-radius:5px;overflow:hidden;background:rgba(37,99,235,0.06)">
+                <div style="width:${pct}%;height:100%;border-radius:5px;background:linear-gradient(90deg,rgba(37,99,235,0.4),rgba(37,99,235,0.85));transition:width 0.3s"></div>
+            </div>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text-primary)">${count}</div>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+function showHmTip(e, label, count) {
     const tip = document.getElementById('hmTooltip');
     if (!tip) return;
-    tip.innerHTML = `<div style="font-weight:600;margin-bottom:2px">${date}</div><div style="color:var(--accent-light)">${count} message${count !== 1 ? 's' : ''}</div>`;
+    tip.innerHTML = `<div style="font-weight:600;margin-bottom:2px">${label}</div><div style="color:var(--accent-light)">${count} message${count !== 1 ? 's' : ''}</div>`;
     tip.style.display = 'block';
     tip.style.left = (e.clientX + 12) + 'px';
     tip.style.top = (e.clientY - 40) + 'px';
