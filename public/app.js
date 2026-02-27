@@ -75,7 +75,9 @@ function applyFilters() {
             if (!(r.message || '').toLowerCase().includes(q) &&
                 !(r.notes || '').toLowerCase().includes(q)) return false;
         }
-        if (r.parsedDate && (dateRange.start || dateRange.end)) {
+        // Date filtering: if a date range is set, exclude rows without timestamps
+        if (dateRange.start || dateRange.end) {
+            if (!r.parsedDate) return false;
             const dk = getDateKey(r.parsedDate, currentTimezone);
             if (dateRange.start && dk < dateRange.start) return false;
             if (dateRange.end && dk > dateRange.end) return false;

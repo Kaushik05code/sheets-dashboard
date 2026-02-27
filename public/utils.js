@@ -2,10 +2,10 @@
 
 const PERSONS = ['Anirudh', 'Kaushik', 'Pranav', 'Varshith'];
 const PERSON_COLORS = {
-    Anirudh: { bg: 'rgba(99,102,241,0.8)', border: '#6366f1', light: 'rgba(99,102,241,0.15)' },
-    Kaushik: { bg: 'rgba(139,92,246,0.8)', border: '#8b5cf6', light: 'rgba(139,92,246,0.15)' },
-    Pranav: { bg: 'rgba(236,72,153,0.8)', border: '#ec4899', light: 'rgba(236,72,153,0.15)' },
-    Varshith: { bg: 'rgba(34,211,238,0.8)', border: '#22d3ee', light: 'rgba(34,211,238,0.15)' },
+    Anirudh: { bg: 'rgba(37,99,235,0.8)', border: '#2563eb', light: 'rgba(37,99,235,0.12)' },
+    Kaushik: { bg: 'rgba(59,130,246,0.8)', border: '#3b82f6', light: 'rgba(59,130,246,0.12)' },
+    Pranav: { bg: 'rgba(99,102,241,0.8)', border: '#6366f1', light: 'rgba(99,102,241,0.12)' },
+    Varshith: { bg: 'rgba(34,211,238,0.8)', border: '#22d3ee', light: 'rgba(34,211,238,0.12)' },
 };
 
 const INDUSTRY_COLORS = [
