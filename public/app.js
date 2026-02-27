@@ -197,8 +197,8 @@ function updateTimeSeries() {
         borderWidth: 1,
         borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 4, bottomRight: 4 },
         borderSkipped: false,
-        barPercentage: labels.length <= 5 ? 0.4 : 0.7,
-        categoryPercentage: labels.length <= 5 ? 0.5 : 0.8,
+        barPercentage: 0.8,
+        categoryPercentage: labels.length <= 5 ? 0.6 : 0.85,
     }));
 
     const ctx = document.getElementById('timeSeriesChart');
@@ -234,12 +234,12 @@ function updateTimeSeries() {
             },
             scales: {
                 x: {
-                    stacked: true,
+                    stacked: false,
                     ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
                     grid: { color: 'rgba(37,99,235,0.04)' },
                 },
                 y: {
-                    stacked: true, beginAtZero: true,
+                    stacked: false, beginAtZero: true,
                     ticks: { color: textColor, font: { size: 10 }, stepSize: 1, precision: 0 },
                     grid: { color: 'rgba(37,99,235,0.04)' },
                     title: { display: true, text: 'Messages', color: textColor, font: { family: 'Inter', size: 10 } },
