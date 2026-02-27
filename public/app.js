@@ -271,7 +271,7 @@ function updateHeatmap() {
 
     const endDate = new Date();
     const startDate = new Date(endDate);
-    startDate.setMonth(startDate.getMonth() - 6);
+    startDate.setMonth(startDate.getMonth() - 3);
 
     const maxCount = Math.max(...Object.values(dayCounts), 1);
     const getLevel = (count) => {
@@ -292,45 +292,79 @@ function updateHeatmap() {
         const week = [];
         for (let d = 0; d < 7; d++) {
             const dk = current.toISOString().slice(0, 10);
-            week.push({ date: dk, count: dayCounts[dk] || 0, level: getLevel(dayCounts[dk]) });
+            const isFuture = current > endDate;
+            week.push({ date: dk, count: dayCounts[dk] || 0, level: isFuture ? -1 : getLevel(dayCounts[dk]) });
             current.setDate(current.getDate() + 1);
         }
         weeks.push(week);
     }
 
-    const months = [];
+    const numWeeks = weeks.length;
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    let html = `<div class="heatmap-grid" style="position:relative">`;
+
+    // Month labels row
+    html += `<div class="hm-months" style="display:grid;grid-template-columns:28px repeat(${numWeeks},1fr);gap:2px;margin-bottom:4px">`;
+    html += '<div></div>';
     let lastMonth = '';
     weeks.forEach((w, i) => {
-        const m = w[0].date.slice(0, 7);
+        const m = w[3]?.date?.slice(0, 7) || w[0].date.slice(0, 7);
         if (m !== lastMonth) {
-            months.push({ index: i, label: new Date(w[0].date + 'T00:00:00Z').toLocaleString('en', { month: 'short' }) });
+            const label = new Date(m + '-15T00:00:00Z').toLocaleString('en', { month: 'short' });
+            html += `<div style="font-size:0.65rem;color:var(--text-muted);font-weight:500">${label}</div>`;
             lastMonth = m;
+        } else {
+            html += '<div></div>';
         }
     });
-
-    const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
-    let html = '<div style="display:inline-block;padding:0 12px">';
-    html += '<div style="display:flex;padding-left:28px;">';
-    let prevIdx = 0;
-    months.forEach(m => {
-        const gap = m.index - prevIdx;
-        html += `<div style="min-width:${gap * 15}px;font-size:0.58rem;color:var(--text-muted)">${m.label}</div>`;
-        prevIdx = m.index;
-    });
     html += '</div>';
+
+    // Day rows
     for (let d = 0; d < 7; d++) {
-        html += '<div class="heatmap-row">';
-        html += `<span class="heatmap-day-label">${dayLabels[d]}</span>`;
+        html += `<div style="display:grid;grid-template-columns:28px repeat(${numWeeks},1fr);gap:2px;align-items:center">`;
+        html += `<div style="font-size:0.6rem;color:var(--text-muted);text-align:right;padding-right:4px">${d % 2 === 1 ? dayLabels[d] : ''}</div>`;
         weeks.forEach(w => {
             const cell = w[d];
-            html += `<div class="heatmap-cell" data-level="${cell.level}" title="${cell.date}: ${cell.count} msgs"></div>`;
+            if (cell.level === -1) {
+                html += '<div style="aspect-ratio:1;border-radius:2px"></div>';
+            } else {
+                const dateLabel = new Date(cell.date + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                html += `<div class="heatmap-cell" data-level="${cell.level}" 
+                    onmouseenter="showHmTip(event,'${dateLabel}',${cell.count})" 
+                    onmouseleave="hideHmTip()" 
+                    style="aspect-ratio:1;border-radius:3px;cursor:pointer"></div>`;
+            }
         });
         html += '</div>';
     }
-    html += '<div class="heatmap-legend"><span>Less</span>';
-    for (let l = 0; l <= 5; l++) html += `<div class="heatmap-cell heatmap-legend-cell" data-level="${l}"></div>`;
-    html += '<span>More</span></div></div>';
+
+    // Legend
+    html += '<div style="display:flex;align-items:center;gap:4px;margin-top:8px;padding-left:32px;font-size:0.6rem;color:var(--text-muted)">';
+    html += '<span>Less</span>';
+    for (let l = 0; l <= 5; l++) html += `<div class="heatmap-cell" data-level="${l}" style="width:14px;height:14px;border-radius:3px"></div>`;
+    html += '<span>More</span>';
+    html += '</div>';
+
+    // Tooltip element
+    html += '<div id="hmTooltip" style="position:fixed;display:none;background:rgba(5,13,31,0.95);color:#f1f5f9;border:1px solid rgba(37,99,235,0.2);border-radius:8px;padding:8px 12px;font-size:0.75rem;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4);white-space:nowrap"></div>';
+
+    html += '</div>';
     container.innerHTML = html;
+}
+
+function showHmTip(e, date, count) {
+    const tip = document.getElementById('hmTooltip');
+    if (!tip) return;
+    tip.innerHTML = `<div style="font-weight:600;margin-bottom:2px">${date}</div><div style="color:var(--accent-light)">${count} message${count !== 1 ? 's' : ''}</div>`;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 12) + 'px';
+    tip.style.top = (e.clientY - 40) + 'px';
+}
+
+function hideHmTip() {
+    const tip = document.getElementById('hmTooltip');
+    if (tip) tip.style.display = 'none';
 }
 
 // ─── Hour Distribution ───────────────────────────────
