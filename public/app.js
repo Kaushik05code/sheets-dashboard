@@ -141,65 +141,14 @@ function updateKPIs() {
     }
 }
 
-// ─── Time Series Chart ───────────────────────────────
+// ─── Messages Chart (4 bars — one per person) ──────
 function updateTimeSeries() {
-    const withDates = filteredData.filter(r => r.parsedDate);
-    const buckets = {};
-    PERSONS.forEach(p => { buckets[p] = {}; });
+    const counts = {};
+    PERSONS.forEach(p => { counts[p] = 0; });
+    filteredData.forEach(r => { counts[r.person] = (counts[r.person] || 0) + 1; });
 
-    withDates.forEach(r => {
-        let key;
-        switch (currentGranularity) {
-            case 'hour':
-                key = getDateKey(r.parsedDate, currentTimezone) + ' ' +
-                    String(getHour(r.parsedDate, currentTimezone)).padStart(2, '0') + ':00';
-                break;
-            case 'week': key = getWeekKey(r.parsedDate, currentTimezone); break;
-            case 'month': key = getMonthKey(r.parsedDate, currentTimezone); break;
-            default: key = getDateKey(r.parsedDate, currentTimezone);
-        }
-        if (!key) return;
-        if (!buckets[r.person]) buckets[r.person] = {};
-        buckets[r.person][key] = (buckets[r.person][key] || 0) + 1;
-    });
-
-    const allKeys = new Set();
-    Object.values(buckets).forEach(b => Object.keys(b).forEach(k => allKeys.add(k)));
-    const labels = [...allKeys].sort();
-
-    // Format labels for readability
-    const displayLabels = labels.map(k => {
-        if (currentGranularity === 'hour') {
-            // "2026-02-26 10:00" -> "10:00"
-            return k.split(' ').pop();
-        }
-        if (currentGranularity === 'day') {
-            // "2026-02-26" -> "Feb 26"
-            const d = new Date(k + 'T00:00:00');
-            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-        if (currentGranularity === 'week') {
-            return 'W' + k.split('-W')[1];
-        }
-        if (currentGranularity === 'month') {
-            const [y, m] = k.split('-');
-            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-            return months[parseInt(m) - 1] + " '" + y.slice(2);
-        }
-        return k;
-    });
-
-    const datasets = PERSONS.map(p => ({
-        label: p,
-        data: labels.map(k => buckets[p]?.[k] || 0),
-        backgroundColor: PERSON_COLORS[p].border + 'cc',
-        borderColor: PERSON_COLORS[p].border,
-        borderWidth: 1,
-        borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 4, bottomRight: 4 },
-        borderSkipped: false,
-        barPercentage: 0.8,
-        categoryPercentage: labels.length <= 5 ? 0.6 : 0.85,
-    }));
+    const data = PERSONS.map(p => counts[p]);
+    const total = data.reduce((a, b) => a + b, 0);
 
     const ctx = document.getElementById('timeSeriesChart');
     if (timeSeriesChart) timeSeriesChart.destroy();
@@ -208,38 +157,48 @@ function updateTimeSeries() {
 
     timeSeriesChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels: displayLabels, datasets },
+        data: {
+            labels: PERSONS,
+            datasets: [{
+                data,
+                backgroundColor: PERSONS.map(p => PERSON_COLORS[p].border + 'cc'),
+                borderColor: PERSONS.map(p => PERSON_COLORS[p].border),
+                borderWidth: 1,
+                borderRadius: 6,
+                borderSkipped: false,
+                barPercentage: 0.55,
+                categoryPercentage: 0.7,
+            }]
+        },
         options: {
             responsive: true, maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: 'nearest', intersect: true },
             plugins: {
-                legend: {
-                    labels: {
-                        color: textColor,
-                        font: { family: 'Inter', size: 11, weight: '500' },
-                        usePointStyle: true, pointStyleWidth: 8, padding: 16,
-                        boxWidth: 12, boxHeight: 12,
-                    }
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: 'rgba(5,13,31,0.95)',
-                    titleFont: { family: 'Inter', size: 12, weight: '600' },
-                    bodyFont: { family: 'Inter', size: 11 },
+                    titleFont: { family: 'Inter', size: 13, weight: '600' },
+                    bodyFont: { family: 'Inter', size: 12 },
                     borderColor: 'rgba(37,99,235,0.2)', borderWidth: 1,
                     padding: 12, cornerRadius: 8,
+                    displayColors: false,
                     callbacks: {
-                        title: (items) => labels[items[0].dataIndex] || items[0].label,
+                        title: (items) => items[0].label,
+                        label: (item) => `${item.raw} messages`,
+                        afterLabel: (item) => total > 0 ? `${Math.round(item.raw / total * 100)}% of total` : '',
                     }
                 }
             },
             scales: {
                 x: {
-                    stacked: false,
-                    ticks: { color: textColor, font: { family: 'Inter', size: 10 }, maxRotation: 45 },
-                    grid: { color: 'rgba(37,99,235,0.04)' },
+                    ticks: {
+                        color: textColor,
+                        font: { family: 'Inter', size: 12, weight: '600' },
+                    },
+                    grid: { display: false },
                 },
                 y: {
-                    stacked: false, beginAtZero: true,
+                    beginAtZero: true,
                     ticks: { color: textColor, font: { size: 10 }, stepSize: 1, precision: 0 },
                     grid: { color: 'rgba(37,99,235,0.04)' },
                     title: { display: true, text: 'Messages', color: textColor, font: { family: 'Inter', size: 10 } },
