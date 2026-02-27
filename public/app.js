@@ -378,7 +378,7 @@ function renderCalendarView(dayCounts, hmStart, hmEnd) {
                 onmouseenter="showHmTip(event,'${dayLabel}',${count})" 
                 onmouseleave="hideHmTip()" 
                 style="aspect-ratio:1;border-radius:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;${todayRing}">
-                <div style="font-size:0.62rem;font-weight:${count > 0 ? '600' : '400'};color:${count > 0 ? 'rgba(255,255,255,0.95)' : 'var(--text-muted)';line-height:1">${day}</div>
+                <div style="font-size:0.62rem;font-weight:${count > 0 ? '600' : '400'};color:${count > 0 ? 'rgba(255,255,255,0.95)' : 'var(--text-muted)'};line-height:1">${day}</div>
                 ${countBadge}
             </div>`;
         }
